@@ -1,0 +1,48 @@
+How to Create a JavaScript Bookmarklet
+Bookmarklets are traditionally small pieces of unobtrusive JavaScript which can be easily executed via a "bookmarks" or "favourites" feature in a web browser. Typically the bookmarklet code is put into the href attribute of an HTML anchor element (like most links on the web) and this can then simply be dragged to a bookmark bar or added to favourites via the anchor link.
+
+Bookmark functionality in browsers essentially just treats the saved text as a location when a given bookmark is selected, and so bookmarklets are executed via the URL destination of a web browser (the code being run against whatever document is currently loaded). The way this is accomplished is that instead of a usual web resource identifier like http:// which tells the browser to connect to an address using the HTTP protocol, the javascript: resource identifier is used to tell the browser to read the proceeding text as JavaScript (hence the script is executed by the browser).
+
+Those of you who are familiar with applying JavaScript (some level of knowledge is necessary to follow the code examples in this tutorial), may be familiar with basic usage of the javascript: URI in an HTML attribute, for example something like the following which simply creates a pop-up when the link is clicked:
+
+<a href="javascript:alert('Hi');">Click Me!</a>
+Bookmarklets work in exactly the same way as this. The above can really be seen as one of the most primitive bookmarklets - add the link to your bookmarks and when selected, a basic pop-up will appear which greets you. Most bookmarklets are, however, more useful than this - typically they obtain information from or modify the current page in some way that is useful to the user.
+
+So let's get going
+Just before we actually start diving in to making a proper bookmarklet, it's probably worth us talking a little bit about browser support. Any browser which supports usage of the javascript: URI as a location and has a decent JavaScript interpreter should execute a given bookmarklet just fine, however some browsers may have issues with certain special characters in a URL. I'm not going to talk about this a whole lot, but encoding some characters may be necessary for correct execution. Modern browsers don't cause massive issues here and will automatically escape most troublesome characters, however older browsers may require a large number of special characters to be escaped. Using codes like %20 instead of spaces and using the encodeURIComponent and decodeURIComponent JavaScript functions to make text url-safe can be extremely useful when characters may cause problems.
+
+Ok, so the golden rule when creating a bookmarklet is to make sure you aren't breaking the currently loaded page. You have to remember that your code will run against whatever page is currently loaded, and so naming collisions and other issues can be present. The easiest and cleanest way around the majority of these issues is to use an anonymous function to wrap around your code - this will prevent any naming collisions and should solve the majority of problems that you'll have by running JavaScript against other JavaScript. If you haven't heard about this, an anonymous function is simply a function which isn't bound to a name, and so for this purpose you can simply nest a function without a name or any parameters in some brackets and then use () to call the function - for example:
+
+javascript:(function(){alert('Hi');})();
+With this knowledge, let's just create a few basic bookmarklets to get some strong foundations with it.
+
+Firstly, let's create a bookmarklet to submit the current URL to the W3 CSS validator to test the validity of the current page's CSS. The plan for this one is that we redirect the current page to the validator website, and tell the validator about the previous URL to get it to validate it. The current URL is accessible in JavaScript through location.href, and changing this value will also redirect the page to a new location, thus we will be using this twice in our script for these purposes. The W3 validator gets the URL to validate through the uri parameter in the URL, and hence something like the following should be able to accomplish our goals:
+
+javascript:(function(){location.href='http://jigsaw.w3.org/css-validator/validator?uri='+encodeURIComponent(location.href);})();
+Notice that in the above we use encodeURIComponent to make sure that any characters in the current URL which could cause issues are escaped. Also note that in the above that nesting in an anonymous function is not really necessary, however in my eyes it is still good practice and provides a foundation for future expansion if required.
+
+Another nice example bookmarklet might be one which changes the font on a page. For this one we need to get the body element of the current document, and then change/add the CSS "font-family" CSS property. Ideally we want our CSS property to have the !important flag so it overrides any more specific font styles set on the page, and there are a couple of different ways to go about this via JavaScript. We could make use of the "style" attribute in HTML, however changing this attribute to whatever we want may break the current page as the "style" attribute may be in use by the page, we could insert a "style" block, which seems very effective however for this basic example seems a bit OTT, or we could do what we're going to do, which is use the style.setProperty method.
+
+This method, when performed upon an element, changes a CSS property (the first parameter) to a specified value (the second parameter) - in many browsers a third property is also supported which allows you to set the priority of the rule (i.e. "important"), brilliant! The only real catch here is that the third parameter isn't supported in IE, but oh well, we don't really care about IE all that much for this example, let's just roll with it. Our approach certainly isn't going to work in all environments or on all websites, but it's a basic example and it should work fine in the majority of use-cases. The finished code for our bookmarklet using the approach we designed above, is as follows:
+
+javascript:(function(){document.getElementsByTagName('body')[0].style.setProperty('font-family', 'serif', 'important');})();
+Getting more complicated
+So we've created some very basic bookmarklets (which are actually semi-useful!), however I'm sure you can appreciate that some bookmarklets can get very complicated. In cases where it would be ideal if the script could update or if the script needs to be very long (writing long pieces of JavaScript without line-breaks can be annoying, and some browsers have a URL length limit), using external files in your bookmarklet may be a good option.
+
+It's not uncommon for bookmarklets to simply be "stubs" which just add a script element to the DOM which brings in an external script, from GitHub for example. Usually this is done by creating a script element on the page, setting its type and src attributes, and then bringing this child element into to the head - so something like the following (line-breaks added here for clarity):
+
+javascript(function(){
+	var%20script=document.createElement('script');
+	script.type='text/javascript';
+	script.src='http://mywebsite.com/script.js';
+	document.getElementsByTagName('head')[0].appendChild(script);
+})();
+In the above I use the var keyword in variable creation to ensure that a new local variable is created in case of a naming conflict (like this for example), however bookmarklets commonly avoid using this keyword (it's optional for variable creation after all) due to the space character required and just ensure that a unique variable name is chosen to avoid conflicts.
+
+When using external files like this, it's also important to think about caching. It's likely that the file will get cached by the user's browser and so if you don't want this functionality (What if you've updated the script since the user's last usage but their browser is using the cached version?!), you can use JavaScript's Math.random() method to insert a random URL parameter - due to the different (random) URL each time the script is executed, the browser should re-download the file each time (hence caching is avoided).
+
+A great example of a "real" bookmarklet being a stub for an external file and using a URL parameter to prevent caching is the fitWeird bookmarklet by Paravel - at the time of writing the bookmarklet code is simply the following stub which brings in a JS file from GitHub and uses Math.random to prevent caching:
+
+javascript:(function(){s=document.createElement('script');s.type='text/javascript';s.src='https://raw.github.com/davatron5000/fitWeird/master/fitWeird.js?v='+parseInt(Math.random()*99999999);document.body.appendChild(s);})();
+
+As a final note to end this tutorial and to end this section about more complex bookmarklets, I'm just going to touch on JavaScript libraries. jQuery, for example, is a very common JavaScript library, however using it in a bookmarklet isn't as simple as you might think. As all of your JavaScript code is being run against that on the page, issues may be present with different library versions, different libraries making use of the dollar sign, etc. I don't want to talk about this too much as all the checking is a little code-heavy, but it's not all that difficult once you figure out what you're doing and have your dependency checks and such set up -- there's a good article over at Smashing Magazine which guides you through making a basic bookmarklet using jQuery which may interest you if you commonly use libraries and think it could be useful for this kind of thing.
